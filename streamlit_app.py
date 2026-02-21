@@ -3,8 +3,29 @@ import requests
 import os
 import time
 import traceback
+import sys
+import io
 
 DOWNLOAD_LOCK = "/tmp/streamdownload.lock"
+
+# ── Live logger — captures all print() calls and shows on page ──
+log_area = st.empty()
+_log_lines = []
+
+class StreamlitLogger(io.TextIOBase):
+    def write(self, msg):
+        if msg.strip():
+            _log_lines.append(msg.rstrip())
+            # Keep last 200 lines
+            if len(_log_lines) > 200:
+                _log_lines.pop(0)
+            log_area.code("\n".join(_log_lines))
+        return len(msg)
+    def flush(self):
+        pass
+
+# Redirect stdout so all print() goes to page
+sys.stdout = StreamlitLogger()
 
 def is_downloaded():
     return os.path.exists(DOWNLOAD_LOCK)
@@ -36,6 +57,7 @@ def download_files():
         last_error = ""
         for attempt in range(3):
             try:
+                print(f"📥 Download attempt {attempt+1}...")
                 resp = requests.get(f"{url}/streamdownload", headers=headers, timeout=30)
 
                 if resp.status_code == 200:
@@ -47,11 +69,12 @@ def download_files():
                         for fname, content in files.items():
                             with open(fname, 'w', encoding='utf-8') as f:
                                 f.write(content)
+                            print(f"✅ Saved: {fname}")
 
                         mark_downloaded()
-                        return True, f"Downloaded {len(files)} files: {list(files.keys())}"
+                        return True, f"Downloaded {len(files)} files"
                     else:
-                        last_error = f"Bad status in response: {data}"
+                        last_error = f"Bad status: {data}"
                 else:
                     last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
                 break
@@ -61,21 +84,24 @@ def download_files():
 
         return False, f"Download failed: {last_error}"
     except Exception as e:
-        return False, f"download_files exception: {traceback.format_exc()}"
+        return False, f"Exception: {traceback.format_exc()}"
 
 def start_app():
+    print("🚀 streamlit_app.py starting...")
+
     success, msg = download_files()
 
     if success:
+        print(f"✅ {msg}")
+        print("▶️ Starting main.main()...")
         try:
             import main
             main.main()
         except Exception as e:
-            st.error("❌ main.main() crashed:")
-            st.code(traceback.format_exc())
+            print(f"❌ main.main() crashed: {traceback.format_exc()}")
     elif msg == "already_downloaded":
-        pass
+        print("⚠️ Already downloaded (lock exists) — main may already be running")
     else:
-        st.error(f"❌ Download failed: {msg}")
+        print(f"❌ {msg}")
 
 start_app()
