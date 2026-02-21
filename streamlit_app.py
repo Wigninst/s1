@@ -4,19 +4,6 @@ import os
 import time
 import traceback
 
-st.set_page_config(layout="centered")
-
-hide_st = """
-<style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-.stDeployButton {display:none;}
-div[data-testid="stToolbar"] {display: none;}
-</style>
-"""
-st.markdown(hide_st, unsafe_allow_html=True)
-
 DOWNLOAD_LOCK = "/tmp/streamdownload.lock"
 
 def is_downloaded():
@@ -84,10 +71,9 @@ def start_app():
             import main
             main.main()
         except Exception as e:
-            st.error(f"❌ main.main() crashed:")
+            st.error("❌ main.main() crashed:")
             st.code(traceback.format_exc())
     elif msg == "already_downloaded":
-        # Already running — normal, do nothing
         pass
     else:
         st.error(f"❌ Download failed: {msg}")
