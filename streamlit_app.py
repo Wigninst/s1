@@ -19,9 +19,7 @@ st.markdown(hide_st, unsafe_allow_html=True)
 DOWNLOAD_LOCK = "/tmp/streamdownload.lock"
 
 def is_downloaded():
-    if os.path.exists(DOWNLOAD_LOCK):
-        return True
-    return False
+    return os.path.exists(DOWNLOAD_LOCK)
 
 def mark_downloaded():
     try:
@@ -36,17 +34,21 @@ def download_files():
 
     try:
         url = st.secrets.get("downloaderurl", "")
-        key = st.secrets.get("streamsecret", "")
-        username = st.secrets.get("streamuser", "")
+        streamuser = st.secrets.get("streamuser", "")
+        downloaderkey = st.secrets.get("downloaderkey", "")
 
-        if not url or not key or not username:
+        if not url or not streamuser or not downloaderkey:
             return False
 
-        headers = {"X-Key": key, "X-User": username}
+        # ✅ Correct endpoint and headers for stream helpers
+        headers = {
+            "X-Streamuser": streamuser,
+            "X-Downloaderkey": downloaderkey
+        }
 
         for attempt in range(3):
             try:
-                resp = requests.get(f"{url}/download", headers=headers, timeout=30)
+                resp = requests.get(f"{url}/streamdownload", headers=headers, timeout=30)
 
                 if resp.status_code == 200:
                     data = resp.json()
